@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:test_webrtc_mobile/src/pages/call_page.dart';
 import 'package:test_webrtc_mobile/src/pages/chat_page.dart';
@@ -14,23 +16,23 @@ class _HomePageState extends State<HomePage> {
   late WebsocketService websocketService;
   dynamic incomingSdpOffer;
 
-  String myUserId = "";
+  String myUserId = '';
   bool isConnect = true;
 
   final callerController = TextEditingController();
 
   @override
   void initState() {
-    super.initState();
     _connect();
-    WebsocketService.instance.socket!.on("offer", (data) {
+    WebsocketService.instance.socket!.on('offer', (data) {
       if (mounted) {
         setState(() {
           incomingSdpOffer = data;
         });
-        debugPrint("<<< PANGGILAN MASUK >>>");
+        debugPrint('<<< Incoming offer >>>');
       }
     });
+    super.initState();
   }
 
   _connect() {
@@ -40,9 +42,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         myUserId = websocketService.myUserId;
       });
-      debugPrint("myUserId >>> $myUserId");
     }).catchError((error) {
-      debugPrint("Error Saat Koneksi Socket >>> $error");
       setState(() {
         isConnect = false;
       });
@@ -80,7 +80,7 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         toolbarHeight: 100,
         title: const Text(
-          "NKRI WebRTC Simulator",
+          'NKRI WebRTC Simulator',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Color(0xffBF3131),
@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
                                   textAlign: TextAlign.center,
                                   readOnly: true,
                                   decoration: InputDecoration(
-                                    labelText: "ID Anda",
+                                    labelText: 'ID Anda',
                                     contentPadding: const EdgeInsets.all(15.0),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(30.0),
@@ -117,7 +117,7 @@ class _HomePageState extends State<HomePage> {
                                   controller: callerController,
                                   textAlign: TextAlign.center,
                                   decoration: InputDecoration(
-                                    hintText: "Masukkan Remote ID",
+                                    hintText: 'Masukkan Remote ID',
                                     alignLabelWithHint: true,
                                     contentPadding: const EdgeInsets.all(15.0),
                                     border: OutlineInputBorder(
@@ -139,7 +139,7 @@ class _HomePageState extends State<HomePage> {
                                     );
                                   },
                                   child: const Text(
-                                    "Undang",
+                                    'Undang',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
                               Expanded(
                                 flex: 2,
                                 child: Text(
-                                  "Panggilan Masuk dari ${incomingSdpOffer["from"]}",
+                                  'Panggilan Masuk dari ${incomingSdpOffer['from']}',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600),
                                 ),
@@ -192,8 +192,8 @@ class _HomePageState extends State<HomePage> {
                                 onPressed: () {
                                   _joinCall(
                                       userId: myUserId,
-                                      remoteId: incomingSdpOffer["from"],
-                                      offer: incomingSdpOffer["offer"]);
+                                      remoteId: incomingSdpOffer['from'],
+                                      offer: incomingSdpOffer['offer']);
                                   setState(() {
                                     incomingSdpOffer = null;
                                   });
@@ -206,7 +206,7 @@ class _HomePageState extends State<HomePage> {
                     ),
             )
           : const Center(
-              child: Text("Gagal Mendapatkan ID-mu :("),
+              child: Text('Gagal Mendapatkan ID-mu :('),
             ),
     );
   }

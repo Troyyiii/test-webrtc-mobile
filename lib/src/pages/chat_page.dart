@@ -45,6 +45,35 @@ class _ChatPageState extends State<ChatPage> {
   _initWebrtc() async {
     _peerConnection = await createPeerConnection(_configuration);
 
+    _peerConnection!.onIceCandidate = (candidate) {
+      if (candidate.candidate != null) {
+        log('Peer on ice candidate');
+        socket!.emit(
+          'ice candidate',
+          {
+            'iceCandidate': {
+              'candidate': candidate.candidate,
+              'sdpMid': candidate.sdpMid,
+              'sdpMLineIndex': candidate.sdpMLineIndex
+            },
+            'to': widget.remoteId,
+          },
+        );
+      }
+    };
+
+    socket!.on('ice candidate', (data) async {
+      log('Socket on ice candidate');
+
+      RTCIceCandidate iceCandidates = RTCIceCandidate(
+        data['candidate'],
+        data['sdpMid'],
+        data['sdpMLineIndex'],
+      );
+      await _peerConnection!.addCandidate(iceCandidates);
+      socket!.emit('ice added');
+    });
+
     if (widget.offer != null) {
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(
@@ -62,49 +91,7 @@ class _ChatPageState extends State<ChatPage> {
         'to': widget.remoteId,
         'from': widget.myUserId,
       });
-
-      socket!.on('ice candidate', (data) async {
-        RTCIceCandidate iceCandidates = RTCIceCandidate(
-          data['candidate'],
-          data['sdpMid'],
-          data['sdpMLineIndex'],
-        );
-        await _peerConnection!.addCandidate(iceCandidates);
-        socket!.emit('ice added');
-      });
-
-      _peerConnection!.onIceCandidate = (candidate) {
-        if (candidate.candidate != null) {
-          socket!.emit(
-            'ice candidate',
-            {
-              'iceCandidate': {
-                'candidate': candidate.candidate,
-                'sdpMid': candidate.sdpMid,
-                'sdpMLineIndex': candidate.sdpMLineIndex
-              },
-              'to': widget.remoteId,
-            },
-          );
-        }
-      };
     } else {
-      _peerConnection!.onIceCandidate = (candidate) {
-        if (candidate.candidate != null) {
-          socket!.emit(
-            'ice candidate',
-            {
-              'iceCandidate': {
-                'candidate': candidate.candidate,
-                'sdpMid': candidate.sdpMid,
-                'sdpMLineIndex': candidate.sdpMLineIndex
-              },
-              'to': widget.remoteId,
-            },
-          );
-        }
-      };
-
       RTCSessionDescription offer = await _peerConnection!.createOffer();
 
       await _peerConnection!.setLocalDescription(offer);
@@ -113,16 +100,6 @@ class _ChatPageState extends State<ChatPage> {
         'offer': offer.toMap(),
         'to': widget.remoteId,
         'from': widget.myUserId,
-      });
-
-      socket!.on('ice candidate', (data) async {
-        RTCIceCandidate iceCandidates = RTCIceCandidate(
-          data['candidate'],
-          data['sdpMid'],
-          data['sdpMLineIndex'],
-        );
-        await _peerConnection!.addCandidate(iceCandidates);
-        socket!.emit('ice added');
       });
 
       socket!.on('answer', (data) async {
