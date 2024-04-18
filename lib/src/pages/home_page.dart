@@ -80,7 +80,7 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         toolbarHeight: 100,
         title: const Text(
-          'NKRI WebRTC Simulator',
+          'WebRTC Simulator',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Color(0xffBF3131),
