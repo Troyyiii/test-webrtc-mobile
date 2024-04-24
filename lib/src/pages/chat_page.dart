@@ -8,8 +8,12 @@ class ChatPage extends StatefulWidget {
   final String myUserId, remoteId;
   final dynamic offer;
 
-  const ChatPage(
-      {super.key, required this.myUserId, required this.remoteId, this.offer});
+  const ChatPage({
+    super.key,
+    required this.myUserId,
+    required this.remoteId,
+    this.offer,
+  });
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -18,10 +22,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final socket = WebsocketService.instance.socket;
 
-  // RTCPeerConnection? _peerConnection;
-
-  RTCPeerConnection? alice;
-  RTCPeerConnection? bob;
+  RTCPeerConnection? _peerConnection;
 
   final Map<String, dynamic> _configuration = {
     'iceServers': [
@@ -36,8 +37,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void initState() {
-    // _initWebrtc();
-    _dummyWebrtc();
+    _initWebrtc();
     super.initState();
   }
 
@@ -46,167 +46,130 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  // _initWebrtc() async {
-  //   _peerConnection = await createPeerConnection(_configuration);
-
-  //   _peerConnection!.onIceCandidate = (candidate) {
-  //     if (candidate.candidate != null) {
-  //       log('Peer on ice candidate');
-  //       socket!.emit(
-  //         'ice candidate',
-  //         {
-  //           'iceCandidate': {
-  //             'candidate': candidate.candidate,
-  //             'sdpMid': candidate.sdpMid,
-  //             'sdpMLineIndex': candidate.sdpMLineIndex
-  //           },
-  //           'to': widget.remoteId,
-  //         },
-  //       );
-  //     }
-  //   };
-
-  //   socket!.on('ice candidate', (data) async {
-  //     log('Socket on ice candidate');
-
-  //     RTCIceCandidate iceCandidates = RTCIceCandidate(
-  //       data['candidate'],
-  //       data['sdpMid'],
-  //       data['sdpMLineIndex'],
-  //     );
-  //     await _peerConnection!.addCandidate(iceCandidates);
-  //     socket!.emit('ice added');
-  //   });
-
-  //   if (widget.offer == null) {
-  //     RTCSessionDescription offer = await _peerConnection!.createOffer();
-
-  //     await _peerConnection!.setLocalDescription(offer);
-
-  //     socket!.emit('offer', {
-  //       'offer': offer.toMap(),
-  //       'to': widget.remoteId,
-  //       'from': widget.myUserId,
-  //     });
-
-  //     socket!.on('answer', (data) async {
-  //       await _peerConnection!.setRemoteDescription(
-  //         RTCSessionDescription(
-  //           data['answer']['sdp'],
-  //           data['answer']['type'],
-  //         ),
-  //       );
-  //     });
-  //   } else {
-  //     await _peerConnection!.setRemoteDescription(
-  //       RTCSessionDescription(
-  //         widget.offer['sdp'],
-  //         widget.offer['type'],
-  //       ),
-  //     );
-
-  //     RTCSessionDescription answer = await _peerConnection!.createAnswer();
-
-  //     await _peerConnection!.setLocalDescription(answer);
-
-  //     socket!.emit('answer', {
-  //       'answer': answer.toMap(),
-  //       'to': widget.remoteId,
-  //       'from': widget.myUserId,
-  //     });
-  //   }
-  // }
-
-  _dummyWebrtc() async {
-    alice = await createPeerConnection(_configuration);
-    bob = await createPeerConnection(_configuration);
-
-    RTCSessionDescription offer = await alice!.createOffer();
-    await alice!.setLocalDescription(offer);
-    socket!.emit('offer', {
-      'offer': offer.toMap(),
-      'to': socket!.id,
-      'from': socket!.id,
-    });
-
-    socket!.on('offer', (data) async {
-      await bob!.setRemoteDescription(
-        RTCSessionDescription(
-          data['offer']['sdp'],
-          data['offer']['type'],
-        ),
-      );
-      RTCSessionDescription answer = await bob!.createAnswer();
-      await bob!.setLocalDescription(answer);
-      socket!.emit('answer', {
-        'answer': answer.toMap(),
-        'to': socket!.id,
-        'from': socket!.id,
+  _initWebrtc() async {
+    try {
+      _peerConnection = await createPeerConnection(_configuration, {
+        "offerToReceiveAudio": false,
+        "offerToReceiveVideo": false,
       });
-    });
+      log('Success create peer connection');
+    } catch (e) {
+      log('Failed create peer connection: $e');
+    }
 
-    socket!.on('answer', (data) async {
-      await alice!.setRemoteDescription(
-        RTCSessionDescription(
-          data['answer']['sdp'],
-          data['answer']['type'],
-        ),
-      );
-    });
-
-    alice!.onIceCandidate = (candidate) {
+    _peerConnection!.onIceCandidate = (candidate) {
       if (candidate.candidate != null) {
-        log('Peer alice on ice candidate');
-        socket!.emit(
-          'ice candidate',
-          {
-            'iceCandidate': {
-              'candidate': candidate.candidate,
-              'sdpMid': candidate.sdpMid,
-              'sdpMLineIndex': candidate.sdpMLineIndex,
+        try {
+          socket!.emit(
+            'ice candidate',
+            {
+              'iceCandidate': {
+                'candidate': candidate.candidate,
+                'sdpMid': candidate.sdpMid,
+                'sdpMLineIndex': candidate.sdpMLineIndex,
+              },
+              'to': widget.remoteId,
             },
-            'to': socket!.id,
-          },
-        );
+          );
+          log('Success emit ice');
+        } catch (e) {
+          log('Failed emit ice: $e');
+        }
       }
     };
 
     socket!.on('ice candidate', (data) async {
-      log('Socket bob on ice candidate');
-      RTCIceCandidate iceCandidates = RTCIceCandidate(
-        data['candidate'],
-        data['sdpMid'],
-        data['sdpMLineIndex'],
-      );
-      await bob!.addCandidate(iceCandidates);
+      try {
+        RTCIceCandidate iceCandidates = RTCIceCandidate(
+          data['candidate'],
+          data['sdpMid'],
+          data['sdpMLineIndex'],
+        );
+        await _peerConnection!.addCandidate(iceCandidates);
+        socket!.emit('ice added');
+        log('Success set ice');
+      } catch (e) {
+        log('Failed set ice: $e');
+      }
     });
 
-    bob!.onIceCandidate = (candidate) {
-      if (candidate.candidate != null) {
-        log('Peer bob on ice candidate');
-        socket!.emit(
-          'ice candidate',
-          {
-            'iceCandidate': {
-              'candidate': candidate.candidate,
-              'sdpMid': candidate.sdpMid,
-              'sdpMLineIndex': candidate.sdpMLineIndex,
-            },
-            'to': socket!.id,
-          },
-        );
+    if (widget.offer == null) {
+      RTCSessionDescription offer = await _peerConnection!.createOffer();
+      log('Offer: ${offer.sdp}');
+
+      try {
+        await _peerConnection!.setLocalDescription(offer);
+        log('Success set local description');
+      } catch (e) {
+        log('Failed set local description: $e');
       }
+
+      try {
+        socket!.emit('offer', {
+          'offer': offer.toMap(),
+          'to': widget.remoteId,
+          'from': widget.myUserId,
+        });
+        log('Success emit offer');
+      } catch (e) {
+        log('Failed emit offer: $e');
+      }
+
+      socket!.on('answer', (data) async {
+        try {
+          await _peerConnection!.setRemoteDescription(
+            RTCSessionDescription(
+              data['answer']['sdp'],
+              data['answer']['type'],
+            ),
+          );
+          log('Success in remote description');
+        } catch (e) {
+          log('Failed in remote description: $e');
+        }
+      });
+    } else {
+      try {
+        await _peerConnection!.setRemoteDescription(
+          RTCSessionDescription(
+            widget.offer['sdp'],
+            widget.offer['type'],
+          ),
+        );
+        log('Success set remote description');
+      } catch (e) {
+        log('Failed set remote description: $e');
+      }
+
+      RTCSessionDescription answer = await _peerConnection!.createAnswer();
+      log('Answer: ${answer.sdp}');
+
+      try {
+        await _peerConnection!.setLocalDescription(answer);
+        log('Success set local description');
+      } catch (e) {
+        log('Failed set local description: $e');
+      }
+
+      try {
+        socket!.emit('answer', {
+          'answer': answer.toMap(),
+          'to': widget.remoteId,
+          'from': widget.myUserId,
+        });
+        log('Success emit answer');
+      } catch (e) {
+        log('Failed emit answer: $e');
+      }
+    }
+
+    _peerConnection!.onConnectionState = (state) {
+      log('Connection state: $state');
     };
 
-    socket!.on('ice candidate', (data) async {
-      log('Socket alice on ice candidate');
-      RTCIceCandidate iceCandidates = RTCIceCandidate(
-        data['candidate'],
-        data['sdpMid'],
-        data['sdpMLineIndex'],
-      );
-      await alice!.addCandidate(iceCandidates);
-    });
+    _peerConnection!.onIceConnectionState = (state) {
+      log('Ice connection state: $state');
+    };
   }
 
   @override
