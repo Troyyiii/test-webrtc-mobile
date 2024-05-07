@@ -84,7 +84,7 @@ class _CallPageState extends State<CallPage> {
       setState(() {});
     };
 
-    socket!.on("ice candidate", (data) async {
+    socket!.on("receive_ice_candidate", (data) async {
       try {
         RTCIceCandidate iceCandidates = RTCIceCandidate(
           data["candidate"],
@@ -92,7 +92,6 @@ class _CallPageState extends State<CallPage> {
           data["sdpMLineIndex"],
         );
         await _peerConnection!.addCandidate(iceCandidates);
-        socket!.emit("ice added");
       } catch (e) {
         log("Gagal on ice candidate: $e");
       }
@@ -101,7 +100,7 @@ class _CallPageState extends State<CallPage> {
     _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
       if (candidate.candidate != null) {
         socket!.emit(
-          "ice candidate",
+          "send_ice_candidate",
           {
             "iceCandidate": {
               "candidate": candidate.candidate,
@@ -130,7 +129,7 @@ class _CallPageState extends State<CallPage> {
 
       await _peerConnection!.setLocalDescription(answer);
 
-      socket!.emit("answer", {
+      socket!.emit("send_answer", {
         "answer": answer.toMap(),
         "to": widget.remoteId,
         "from": widget.myUserId,
@@ -140,13 +139,13 @@ class _CallPageState extends State<CallPage> {
 
       await _peerConnection!.setLocalDescription(offer);
 
-      socket!.emit("offer", {
+      socket!.emit("send_offer", {
         "offer": offer.toMap(),
         "to": widget.remoteId,
         "from": widget.myUserId,
       });
 
-      socket!.on("answer", (data) async {
+      socket!.on("receive_answer", (data) async {
         try {
           await _peerConnection!.setRemoteDescription(
             RTCSessionDescription(
@@ -217,9 +216,9 @@ class _CallPageState extends State<CallPage> {
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xffBF3131),
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(30.0),
                     topRight: Radius.circular(30.0),
                   ),
@@ -232,6 +231,7 @@ class _CallPageState extends State<CallPage> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.cameraswitch),
+                        color: Colors.white,
                         onPressed: _switchCamera,
                       ),
                       IconButton(
@@ -251,16 +251,6 @@ class _CallPageState extends State<CallPage> {
                       IconButton(
                         icon: const Icon(Icons.call_end),
                         color: Colors.redAccent,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.8),
-                          padding: const EdgeInsets.all(15.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50.0),
-                          ),
-                        ),
                         onPressed: _leaveCall,
                       ),
                     ],
@@ -268,16 +258,12 @@ class _CallPageState extends State<CallPage> {
                 ),
               ),
             ),
-            Align(
+            const Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: const EdgeInsets.only(top: 20.0),
+                padding: EdgeInsets.only(top: 20.0),
                 child: Text(
                   "Dalam Panggilan",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
                 ),
               ),
             ),
