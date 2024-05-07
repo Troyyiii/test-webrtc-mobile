@@ -4,9 +4,8 @@ import 'package:socket_io_client/socket_io_client.dart';
 
 class WebsocketService {
   Socket? socket;
-  // String socketUrl = "https://10.0.2.2:3000";
-  String socketUrl = "https://192.168.5.119:3000";
-  String myUserId = "";
+  final String _socketUrl = 'http://192.168.0.138:3000/';
+  String myUserId = '';
 
   WebsocketService._();
   static final instance = WebsocketService._();
@@ -14,26 +13,34 @@ class WebsocketService {
   final Completer<void> _socketConnCompleter = Completer<void>();
 
   Future<void> connect() async {
-    socket = io(socketUrl, <String, dynamic>{
-      "transports": ["websocket"],
-    });
+    socket = io(
+      _socketUrl,
+      OptionBuilder().setTransports(['websocket']).disableAutoConnect().build(),
+    );
+
+    socket!.connect();
 
     socket!.onConnect((_) async {
-      log("<<< Connected >>>");
+      log('Socket Connected');
       myUserId = socket!.id!;
-      log("User ID >>> $myUserId");
+      log('User ID: $myUserId');
 
       _socketConnCompleter.complete();
     });
 
-    socket!.onConnectError((e) {
-      log("Connection Error >>> $e");
+    socket!.onDisconnect((reason) {
+      log('Socket disconnected');
+      if (reason == 'io server disconnect') {
+        socket!.connect();
+      }
+    });
+
+    socket!.onError((e) {
+      log("Socket Error: $e");
       _socketConnCompleter.completeError(e);
     });
 
-    socket!.onDisconnect((_) => log("<<< Socket Disconnected >>>"));
-
-    socket!.onError((e) => log("Error >>> $e"));
+    socket!.on('server_response', (data) => log('Server response: $data'));
   }
 
   Future<void> waitUntilSocketConnected() {

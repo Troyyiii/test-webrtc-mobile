@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:test_webrtc_mobile/src/services/websocket_service.dart';
@@ -6,8 +8,12 @@ class CallPage extends StatefulWidget {
   final String myUserId, remoteId;
   final dynamic offer;
 
-  const CallPage(
-      {super.key, required this.myUserId, required this.remoteId, this.offer});
+  const CallPage({
+    super.key,
+    required this.myUserId,
+    required this.remoteId,
+    this.offer,
+  });
 
   @override
   State<CallPage> createState() => _CallPageState();
@@ -20,8 +26,6 @@ class _CallPageState extends State<CallPage> {
 
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
-
-  List<RTCIceCandidate> iceCandidates = [];
 
   bool isAudioOn = true, isVideoOn = true, isFrontCamera = true;
 
@@ -38,7 +42,6 @@ class _CallPageState extends State<CallPage> {
     _remoteVideoRenderer.dispose();
     _localStream?.dispose();
     _peerConnection?.dispose();
-    socket?.disconnect();
     super.dispose();
   }
 
@@ -81,17 +84,37 @@ class _CallPageState extends State<CallPage> {
       setState(() {});
     };
 
-    _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
-      debugPrint('Connection State >>> $state');
+    socket!.on("ice candidate", (data) async {
+      try {
+        RTCIceCandidate iceCandidates = RTCIceCandidate(
+          data["candidate"],
+          data["sdpMid"],
+          data["sdpMLineIndex"],
+        );
+        await _peerConnection!.addCandidate(iceCandidates);
+        socket!.emit("ice added");
+      } catch (e) {
+        log("Gagal on ice candidate: $e");
+      }
+    });
+
+    _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+      if (candidate.candidate != null) {
+        socket!.emit(
+          "ice candidate",
+          {
+            "iceCandidate": {
+              "candidate": candidate.candidate,
+              "sdpMid": candidate.sdpMid,
+              "sdpMLineIndex": candidate.sdpMLineIndex
+            },
+            "to": widget.remoteId,
+          },
+        );
+      }
     };
 
-    debugPrint("WIDGET OFFER >>> ${widget.offer}");
-
     if (widget.offer != null) {
-      _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
-        debugPrint('Connection State Answer >>> $state');
-      };
-
       try {
         await _peerConnection!.setRemoteDescription(
           RTCSessionDescription(
@@ -100,7 +123,7 @@ class _CallPageState extends State<CallPage> {
           ),
         );
       } catch (e) {
-        debugPrint("<<< GAGAL ON SET REMOTE DESCRIPTION >>> $e");
+        log("Gagal on set remote description: $e");
       }
 
       RTCSessionDescription answer = await _peerConnection!.createAnswer();
@@ -112,62 +135,7 @@ class _CallPageState extends State<CallPage> {
         "to": widget.remoteId,
         "from": widget.myUserId,
       });
-
-      socket!.on("ice candidate", (data) async {
-        debugPrint("<<< ON ICE CANDIDATE >>>");
-        try {
-          RTCIceCandidate iceCandidates = RTCIceCandidate(
-            data["candidate"],
-            data["sdpMid"],
-            data["sdpMLineIndex"],
-          );
-          await _peerConnection!.addCandidate(iceCandidates);
-          socket!.emit("ice added");
-        } catch (e) {
-          debugPrint("<<< GAGAL ON ICE CANDIDATE >>> $e");
-        }
-      });
-
-      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        if (candidate.candidate != null) {
-          socket!.emit(
-            "ice candidate",
-            {
-              "iceCandidate": {
-                "candidate": candidate.candidate,
-                "sdpMid": candidate.sdpMid,
-                "sdpMLineIndex": candidate.sdpMLineIndex
-              },
-              "to": widget.remoteId,
-            },
-          );
-          debugPrint(
-              "MASUK SINI KANG: $candidate, INI KE >>> ${widget.remoteId}");
-        }
-      };
     } else {
-      _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
-        debugPrint('Connection State Offer >>> $state');
-      };
-
-      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        if (candidate.candidate != null) {
-          socket!.emit(
-            "ice candidate",
-            {
-              "iceCandidate": {
-                "candidate": candidate.candidate,
-                "sdpMid": candidate.sdpMid,
-                "sdpMLineIndex": candidate.sdpMLineIndex
-              },
-              "to": widget.remoteId,
-            },
-          );
-          debugPrint(
-              "MASUK SINI KANG: $candidate, INI KE >>> ${widget.remoteId}");
-        }
-      };
-
       RTCSessionDescription offer = await _peerConnection!.createOffer();
 
       await _peerConnection!.setLocalDescription(offer);
@@ -178,21 +146,6 @@ class _CallPageState extends State<CallPage> {
         "from": widget.myUserId,
       });
 
-      socket!.on("ice candidate", (data) async {
-        debugPrint("<<< ON ICE CANDIDATE >>>");
-        try {
-          RTCIceCandidate iceCandidates = RTCIceCandidate(
-            data["candidate"],
-            data["sdpMid"],
-            data["sdpMLineIndex"],
-          );
-          await _peerConnection!.addCandidate(iceCandidates);
-          socket!.emit("ice added");
-        } catch (e) {
-          debugPrint("<<< GAGAL ON ICE CANDIDATE >>> $e");
-        }
-      });
-
       socket!.on("answer", (data) async {
         try {
           await _peerConnection!.setRemoteDescription(
@@ -201,9 +154,8 @@ class _CallPageState extends State<CallPage> {
               data["answer"]["type"],
             ),
           );
-          debugPrint("<<< BERHASIL ON ANSWER >>>");
         } catch (e) {
-          debugPrint("<<< GAGAL ON ANSWER >>> $e");
+          log("Gagal on answer: $e");
         }
       });
     }
