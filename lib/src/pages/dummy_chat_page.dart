@@ -103,24 +103,24 @@ class _DummyChatPageState extends State<DummyChatPage> {
           data['answer']['type'],
         ),
       );
-    });
 
-    alice!.onIceCandidate = (candidate) {
-      if (candidate.candidate != null) {
-        log('Peer alice on ice candidate');
-        socket!.emit(
-          'ice candidate',
-          {
-            'iceCandidate': {
-              'candidate': candidate.candidate,
-              'sdpMid': candidate.sdpMid,
-              'sdpMLineIndex': candidate.sdpMLineIndex,
+      alice!.onIceCandidate = (candidate) {
+        if (candidate.candidate != null) {
+          log('Peer alice on ice candidate');
+          socket!.emit(
+            'ice candidate',
+            {
+              'iceCandidate': {
+                'candidate': candidate.candidate,
+                'sdpMid': candidate.sdpMid,
+                'sdpMLineIndex': candidate.sdpMLineIndex,
+              },
+              'to': socket!.id,
             },
-            'to': socket!.id,
-          },
-        );
-      }
-    };
+          );
+        }
+      };
+    });
 
     socket!.on('ice candidate', (data) async {
       log('Socket bob on ice candidate');
@@ -131,44 +131,6 @@ class _DummyChatPageState extends State<DummyChatPage> {
       );
       await bob!.addCandidate(iceCandidates);
     });
-
-    bob!.onIceCandidate = (candidate) {
-      if (candidate.candidate != null) {
-        log('Peer bob on ice candidate');
-        socket!.emit(
-          'ice candidate',
-          {
-            'iceCandidate': {
-              'candidate': candidate.candidate,
-              'sdpMid': candidate.sdpMid,
-              'sdpMLineIndex': candidate.sdpMLineIndex,
-            },
-            'to': socket!.id,
-          },
-        );
-      }
-    };
-
-    socket!.on('ice candidate', (data) async {
-      log('Socket alice on ice candidate');
-      RTCIceCandidate iceCandidates = RTCIceCandidate(
-        data['candidate'],
-        data['sdpMid'],
-        data['sdpMLineIndex'],
-      );
-      await alice!.addCandidate(iceCandidates);
-    });
-
-    aliceChannel = await alice!.createDataChannel('test', RTCDataChannelInit());
-    bobChannel = await bob!.createDataChannel('test', RTCDataChannelInit());
-
-    alice!.onDataChannel = (channel) {
-      _setupDataChannel(channel, 'Bob');
-    };
-
-    bob!.onDataChannel = (channel) {
-      _setupDataChannel(channel, 'Alice');
-    };
   }
 
   _setupDataChannel(RTCDataChannel channel, String sender) {
