@@ -5,7 +5,6 @@ import 'package:socket_io_client/socket_io_client.dart';
 class WebsocketService {
   Socket? socket;
   final String _socketUrl = 'http://192.168.0.138:3000/';
-  String myUserId = '';
 
   WebsocketService._();
   static final instance = WebsocketService._();
@@ -22,9 +21,7 @@ class WebsocketService {
 
     socket!.onConnect((_) async {
       log('Socket Connected');
-      myUserId = socket!.id!;
-      log('User ID: $myUserId');
-
+      log('Socket ID: ${socket!.id!}');
       _socketConnCompleter.complete();
     });
 
