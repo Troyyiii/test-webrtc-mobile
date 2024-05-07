@@ -2,7 +2,6 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:test_webrtc_mobile/src/pages/call_page.dart';
-import 'package:test_webrtc_mobile/src/pages/chat_page.dart';
 import 'package:test_webrtc_mobile/src/services/websocket_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,7 +15,7 @@ class _HomePageState extends State<HomePage> {
   late WebsocketService websocketService;
   dynamic incomingSdpOffer;
 
-  String myUserId = '';
+  String userId = '';
   bool isConnect = true;
 
   final callerController = TextEditingController();
@@ -29,7 +28,7 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           incomingSdpOffer = data;
         });
-        debugPrint('<<< Incoming offer >>>');
+        log('Incoming offer from ${data['from']}');
       }
     });
     super.initState();
@@ -40,7 +39,7 @@ class _HomePageState extends State<HomePage> {
     websocketService.connect();
     websocketService.waitUntilSocketConnected().then((_) {
       setState(() {
-        myUserId = websocketService.myUserId;
+        userId = websocketService.myUserId;
       });
     }).catchError((error) {
       setState(() {
@@ -56,15 +55,8 @@ class _HomePageState extends State<HomePage> {
   }) {
     Navigator.push(
       context,
-      // MaterialPageRoute(
-      //   builder: (BuildContext context) => CallPage(
-      //     myUserId: userId,
-      //     remoteId: remoteId,
-      //     offer: offer,
-      //   ),
-      // ),
       MaterialPageRoute(
-        builder: (BuildContext context) => ChatPage(
+        builder: (BuildContext context) => CallPage(
           myUserId: userId,
           remoteId: remoteId,
           offer: offer,
@@ -100,7 +92,7 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 TextField(
                                   controller: TextEditingController(
-                                    text: myUserId,
+                                    text: userId,
                                   ),
                                   textAlign: TextAlign.center,
                                   readOnly: true,
@@ -133,10 +125,13 @@ class _HomePageState extends State<HomePage> {
                                     minimumSize: const Size.fromHeight(50),
                                   ),
                                   onPressed: () {
-                                    _joinCall(
-                                      userId: myUserId,
-                                      remoteId: callerController.text,
-                                    );
+                                    if (callerController.text.isNotEmpty) {
+                                      _joinCall(
+                                        userId: userId,
+                                        remoteId: callerController.text,
+                                      );
+                                      callerController.clear();
+                                    }
                                   },
                                   child: const Text(
                                     'Undang',
@@ -191,9 +186,10 @@ class _HomePageState extends State<HomePage> {
                                 color: Colors.greenAccent,
                                 onPressed: () {
                                   _joinCall(
-                                      userId: myUserId,
-                                      remoteId: incomingSdpOffer['from'],
-                                      offer: incomingSdpOffer['offer']);
+                                    userId: userId,
+                                    remoteId: incomingSdpOffer['from'],
+                                    offer: incomingSdpOffer['offer'],
+                                  );
                                   setState(() {
                                     incomingSdpOffer = null;
                                   });
